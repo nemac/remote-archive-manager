@@ -1,0 +1,115 @@
+#! /usr/bin/perl
+
+### Maintain a local archive copy of files from a remote system.
+###
+###    This script:
+###
+###      1. uses rsync to create a local mirror of a directory from
+###         a remote server
+###      2. copies (hard links) files from that local mirror into a
+###         local archive directory
+###      3. purges old files from the archive directory
+###
+###    The remote server name, various directory names, and parameters
+###    that determine how old files must be before they're deleted
+###    from the local archive directory, are all specified in the file
+###    "Settings.pm"; see the comments in that file for details.
+###
+###    This script must be run from the directory containing it (and
+###    the Settings.pm file).
+###
+### Mark Phillips
+### mphillip@unca.edu
+### Thu Jan 10 21:50:21 EST 2013
+
+use Settings;
+use Time::Local;
+
+#
+# run rsync to update contents of RSYNC_LOCAL_DEST_DIR
+#
+sys("rsync -qa --delete $Settings::RSYNC_REMOTE_SERVER_NAME:$Settings::RSYNC_REMOTE_SERVER_DIR/ $Settings::RSYNC_LOCAL_DEST_DIR");
+
+#
+# make hard links of files from RSYNC_LOCAL_DEST_DIR into LOCAL_ARCHIVE_DIR
+#
+sys("ln -f $Settings::RSYNC_LOCAL_DEST_DIR/$Settings::ARCHIVE_LINK_SOURCE_PATTERN $Settings::LOCAL_ARCHIVE_DIR");
+
+chdir($Settings::LOCAL_ARCHIVE_DIR);
+
+#
+# purge old files from LOCAL_ARCHIVE_DIR
+#
+
+#   find all the files and record their ages
+$now = time();
+open(FIND, "find . -type f -print|");
+@files = ();
+while (chomp(my $file = <FIND>)) {
+    push(@files, file_detail($now, $file));
+}
+close(FIND);
+
+#   make sure their in reverse chronological order
+@files = sort { $b->{name} cmp $a->{name} } @files;
+
+#   mark all files younger than RETAIN_AGE as keepers
+foreach $file (@files) {
+    if ($file->{hourage} <= $Settings::RETAIN_AGE) {
+	$file->{keep} = 1;
+    }
+}
+
+#   mark one file per day for all time as keeper
+$eqclasses = {};
+foreach $file (@files) {
+    if ( ($day) = ($file->{name} =~ /(\d{4}-\d{2}-\d{2})-/) ) {
+	if (!$eqclasses->{$day}) {
+	    $eqclasses->{$day} = [];
+	}
+	push(@{$eqclasses->{$day}}, $file);
+    }
+}
+foreach $day (keys %{$eqclasses}) {
+    $eqclasses->{$day}->[0]->{keep} = 1;
+}
+
+#   delete files not marked as keepers
+foreach $file (@files) {
+    if (! $file->{keep}) {
+	unlink($file->{name});
+    }
+}
+
+sub file_detail {
+    # Returns a structure with fields indicating various details about a file
+    #
+    # Usage:
+    #       $detail = file_age_detail(time(), $filename);
+    #       print "file's age in hours: " . $detail->{hourage};
+    #       print "            weekday: " . $detail->{wday};
+    #
+    my $now = shift;
+    my $file = shift;
+
+    my ($year,$mon,$mday,$hour,$min,$sec) = ($file =~ m|-(\d+)-(\d+)-(\d+)--(\d+)-(\d+)-(\d+)-|);
+    my $time = timegm($sec,$min,$hour,$mday,$mon-1,$year);
+    my $wday = (gmtime($time))[6];
+    return { 
+	'name' => $file,
+	'time' => $time,
+	'hourage' => ($now - $time) / 3600,
+	'year' => $year,
+	'mon' => $mon,
+	'mday' => $mday,
+	'hour' => $hour,
+	'min' => $min,
+	'sec' => $sec,
+	'wday' => $wday
+    };
+}
+
+sub sys {
+    my $cmd = shift;
+    return system($cmd);
+}

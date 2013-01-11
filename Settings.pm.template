@@ -1,0 +1,46 @@
+package Settings;
+
+###
+### IMPORTANT!
+###
+### This file is a template only.  Before using archive-manager, you must make
+### a copy of this file named "Settings.pm" and edit the values it contains
+### to whatever is appropriate.
+###
+
+# $SERVER_NAME should be the name of the remote server to copy files from.  This
+#    should be a string of the form "user@server", and should not end with a slash
+#    or any other punctuation.  For example:
+$SERVER_NAME = "jsmith@foo.example.com"
+
+# $SERVER_DIR should be the absolute path of the directory on the server from
+#    which files should be sync'ed.  This path should not end with a slash or
+#    any other punctuation.  For example:
+$SERVER_DIR = "/home/users/jsmith/foo"
+
+# $RSYNC_LOCAL_DEST_DIR should be the path of a directory on the local system which
+#    will serve as a local mirror of $RSYNC_REMOTE_SERVER_DIR; it will receive files
+#    being copied via rsync from the remote system, and files will be deleted from
+#    it, to keep it in sync with $RSYNC_REMOTE_SERVER_DIR.  This can be either a
+#    relative or absolute path ; if it is relative, it should be wrt whatever
+#    directory the "rsync" script is run from.  For example,
+$RSYNC_LOCAL_DEST_DIR = "files".
+
+# $LOCAL_ARCHIVE_DIR should be the path of a directory on the local system which
+#    will receive hard links created after each rsync run. This can be either a
+#    relative or absolute path ; if it is relative, it should be wrt whatever
+#    directory the "rsync" script is run from.  For example,
+$LOCAL_ARCHIVE_DIR = "archive";
+
+# $ARCHIVE_LINK_SOURCE_PATTERN should be a shell glob pattern that indicates a collection of
+#    files from $RSYNC_LOCAL_DEST_DIR that should be hard-linked into the $LOCAL_ARCHIVE_DIR
+#    after each rsync run.    For example,
+$ARCHIVE_LINK_SOURCE_PATTERN = "*";
+
+# $RETAIN_AGE should be a number of hours.  All files in the $LOCAL_ARCHIVE_DIR will be
+#    retained until they are at least this old.  Files older than $RETAIN_AGE will be
+#    removed from $LOCAL_ARCHIVE_DIR, except that one file from each day will be retained
+#    indefinitely.
+$RETAIN_AGE = 96;
+
+1;
